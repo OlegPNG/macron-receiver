@@ -1,0 +1,94 @@
+<script lang="ts">
+  import Greet from './lib/Greet.svelte'
+  import Button from './lib/Button.svelte'
+    import MacronSidebar from './lib/MacronSidebar.svelte';
+
+  let menu_visible: boolean = true;
+  let sidebar: HTMLElement = document.getElementById("sidebar")!
+  let button_view: HTMLElement = document.getElementById("button-view")!
+  let menu_toggle: HTMLElement | null = document.getElementById("menu-toggle")
+  function sidebar_open() {
+      if (sidebar != null) {
+          sidebar.style.width = "25%"
+          sidebar.style.visibility = "visible"
+          sidebar.style.opacity = "100"
+      }
+
+
+      if (button_view != null) {
+          button_view.style.width = "100%"
+      }
+  }
+  function sidebar_close() {
+      let sidebar = document.getElementById("sidebar")
+      let button_view = document.getElementById("button-view")
+      console.log(sidebar)
+      if (sidebar != null) {
+          sidebar.style.visibility = "collapse"
+          sidebar.style.opacity = "0"
+          sidebar.style.width = "0"
+      }
+
+      if (button_view != null) {
+          button_view.style.width = "100vw"
+      }
+  }
+
+  function sidebar_toggle() {
+      let sidebar: HTMLElement = document.getElementById("sidebar")!
+      let sidebar_content = document.getElementById("sidebar-content")!
+      let button_view: HTMLElement = document.getElementById("button-view")!
+      let menu_toggle: HTMLElement = document.getElementById("menu-toggle")!
+
+      console.log(sidebar?.getAttribute("visibility"))
+      if (menu_visible) {
+          sidebar.style.visibility = "collapse"
+          sidebar.style.opacity = "0"
+
+          sidebar_content.style.visibility = "hidden"
+
+      } else {
+          sidebar.style.visibility = "visible"
+          sidebar.style.opacity = "100"
+          sidebar.style.width = "25%"
+
+          sidebar_content.style.visibility = "visible"
+          sidebar_content.style.width = "6rem"
+
+      }
+      menu_visible = !menu_visible
+  }
+</script>
+
+<main>
+
+    <MacronSidebar />
+    <!--<div class="p-4 h-screen w-1/4 inline-block break-after-column transition-all ease-in-out bg-slate-400" id="sidebar">
+        <button on:click={sidebar_toggle} class="flex w-full justify-end" id="menu-toggle">
+            <div class="space-y-2">
+                <div class="w-8 h-0.5 bg-gray-600"></div>
+                <div class="w-8 h-0.5 bg-gray-600"></div>
+                <div class="w-8 h-0.5 bg-gray-600"></div>
+            </div>
+        </button>
+        <div id="sidebar-content" class="w-24">
+            <h1 class="p-4 text-lg font-bold break-after-right">Menu</h1>
+            <a href="#" class="block w-auto" on:click={sidebar_close}>Close</a>
+            <a href="#" class="block w-auto">Link 1</a>
+            <a href="#" class="block w-auto">Link 2</a>
+            <a href="#" class="block w-auto">Link 3</a>
+        </div>
+    </div>
+    <div class="p-4 w-full h-screen bg-amber-300 justify-center transition-all" id="button-view">
+        <button on:click={sidebar_open}>Open</button>
+
+        <div class="grid sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8 px-4">
+            <Button />
+            <Button />
+            <Button />
+            <Button />
+            <Button />
+            <Button />
+        </div>
+    </div>-->
+</main>

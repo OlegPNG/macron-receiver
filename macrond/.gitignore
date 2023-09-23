@@ -1,0 +1,10 @@
+debug/
+release/
+
+Cargo.lock
+
+# Backup files by rustfmt
+**/*.rs.bk
+
+# Windows builds of rustc generate these to store debug info
+.pdb

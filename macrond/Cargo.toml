@@ -1,0 +1,18 @@
+[package]
+name = "macrond"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+config-file = "0.2.3"
+dotenv = "0.15.0"
+env_logger = "0.10.0"
+log = "0.4.20"
+serde = { version = "1.0.188", features = ["derive"] }
+serde_json = "1.0.107"
+tokio = { version = "1.32.0", features = ["full"] }
+tokio-tungstenite = "0.20.0"
+toml = "0.8.0"
+url = "2.4.1"
