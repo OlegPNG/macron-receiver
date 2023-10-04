@@ -12,7 +12,9 @@ struct OutboundMessage {
     #[serde(rename="type")]
     message_type: String,
     auth_key: String,
-    reciever_name: String,
+    //#[serde(skip_serializing_if = "Option::is_none")]
+    //password: Option<String>,
+    receiver_name: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     functions: Option<Vec<MacronFunction>>,
 }
@@ -86,8 +88,8 @@ async fn main() -> Result<(), Box<dyn Error + Send + Sync>>{
     //let server_url = std::env::var("SERVER_URL").expect("Server url not in environment.");
     //let auth_key = std::env::var("AUTH_KEY").expect("Auth key not in environtment.");
     let config_dir = match std::env::var("MACRON_CONFIG") {
-        Ok(file) => {
-            file
+        Ok(dir) => {
+            dir
         }
         Err(_) => {
             let home = std::env::var("HOME").expect("No config file and cannot find HOME dir");
@@ -100,13 +102,14 @@ async fn main() -> Result<(), Box<dyn Error + Send + Sync>>{
     let config = MacronConfig::from_config_file(config_dir).expect("Config file not found.");
 
     info!("Config functions: {}", config.functions.len());
+    
 
     let (mut socket, _) = connect(Url::parse(&config.server.url)?)?;
 
     let auth_msg = OutboundMessage {
         message_type: "auth".to_string(),
         auth_key: config.server.auth_key.clone(),
-        reciever_name: "rust".to_string(),
+        receiver_name: "rust".to_string(),
         functions: None,
     };
 
@@ -124,6 +127,7 @@ async fn main() -> Result<(), Box<dyn Error + Send + Sync>>{
         process::exit(2);
     }
 
+    info!("Starting loop...");
     loop {
         let msg_json = socket.read()?;
         info!("Message: {}", msg_json);
@@ -135,7 +139,7 @@ async fn main() -> Result<(), Box<dyn Error + Send + Sync>>{
                 let response = OutboundMessage {
                     message_type: "function_list".to_string(),
                     auth_key: config.server.auth_key.clone(),
-                    reciever_name: "rust".to_string(),
+                    receiver_name: "rust".to_string(),
                     functions: Some(config.functions.clone()),
                 };
 
