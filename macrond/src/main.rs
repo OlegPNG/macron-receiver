@@ -1,5 +1,5 @@
 use core::fmt;
-use std::{process::{self, Command}, os, error::Error};
+use std::{process::{self, Command}, error::Error};
 
 use config_file::FromConfigFile;
 use log::{info, error};
@@ -11,9 +11,8 @@ use serde::{Serialize, Deserialize};
 struct OutboundMessage {
     #[serde(rename="type")]
     message_type: String,
-    auth_key: String,
-    //#[serde(skip_serializing_if = "Option::is_none")]
-    //password: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    password: Option<String>,
     receiver_name: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     functions: Option<Vec<MacronFunction>>,
@@ -26,7 +25,7 @@ struct InboundMessage {
     #[serde(skip_serializing_if = "Option::is_none")]
     error: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    function_id: Option<usize>,
+    id: Option<usize>,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -39,7 +38,8 @@ struct MacronConfig {
 #[derive(Serialize, Deserialize)]
 struct ServerConfig {
     url: String,
-    auth_key: String,
+    password: String,
+    //auth_key: String,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -47,6 +47,7 @@ struct MacronFunction {
     id: u8,
     name: String,
     description: String,
+    #[serde(skip_serializing)]
     command: String,
 }
 
@@ -108,7 +109,8 @@ async fn main() -> Result<(), Box<dyn Error + Send + Sync>>{
 
     let auth_msg = OutboundMessage {
         message_type: "auth".to_string(),
-        auth_key: config.server.auth_key.clone(),
+        password: Some(config.server.password.clone()),
+        //auth_key: config.server.auth_key.clone(),
         receiver_name: "rust".to_string(),
         functions: None,
     };
@@ -130,25 +132,28 @@ async fn main() -> Result<(), Box<dyn Error + Send + Sync>>{
     info!("Starting loop...");
     loop {
         let msg_json = socket.read()?;
-        info!("Message: {}", msg_json);
+        info!("Message: {}", msg_json.to_string());
 
         let json: InboundMessage = serde_json::from_str(&msg_json.to_string())?;
 
         match json.message_type.as_str() {
             "functions" => {
+                info!("Sending functions...");
                 let response = OutboundMessage {
-                    message_type: "function_list".to_string(),
-                    auth_key: config.server.auth_key.clone(),
+                    message_type: "functions".to_string(),
+                    password: Some(config.server.password.clone()),
+                    //auth_key: config.server.auth_key.clone(),
                     receiver_name: "rust".to_string(),
                     functions: Some(config.functions.clone()),
                 };
 
                 let json_response = serde_json::to_string(&response)?;
-
+                info!("Function Response: {}", json_response);
                 socket.send(Message::Text(json_response))?;
             },
             "exec" => {
-                let index = json.function_id.unwrap_or(usize::MAX);
+                info!("Executing Function...");
+                let index = json.id.unwrap_or(usize::MAX);
                 exec_function(index, &config)?;
                 
             }
