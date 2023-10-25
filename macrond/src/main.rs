@@ -1,32 +1,17 @@
+mod message;
+
 use core::fmt;
 use std::{process::{self, Command}, error::Error};
 
 use config_file::FromConfigFile;
 use log::{info, error};
+use message::{AuthMessage, CredentialMessage};
 use tokio_tungstenite::tungstenite::{Message, connect};
 use url::Url;
 use serde::{Serialize, Deserialize};
 
-#[derive(Serialize, Deserialize)]
-struct OutboundMessage {
-    #[serde(rename="type")]
-    message_type: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    password: Option<String>,
-    receiver_name: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    functions: Option<Vec<MacronFunction>>,
-}
+use crate::message::{OutboundMessage, InboundMessage};
 
-#[derive(Serialize, Deserialize)]
-struct InboundMessage {
-    #[serde(rename="type")]
-    message_type: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    error: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    id: Option<usize>,
-}
 
 #[derive(Serialize, Deserialize)]
 struct MacronConfig {
@@ -38,12 +23,13 @@ struct MacronConfig {
 #[derive(Serialize, Deserialize)]
 struct ServerConfig {
     url: String,
+    email: String,
     password: String,
     //auth_key: String,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
-struct MacronFunction {
+pub struct MacronFunction {
     id: u8,
     name: String,
     description: String,
@@ -79,6 +65,16 @@ fn exec_function(id: usize, config: &MacronConfig) -> Result<(), Box<dyn Error +
 
 }
 
+async fn login(url: String, msg: &CredentialMessage) -> Result<String, Box<dyn Error + Send + Sync>> {
+    let client = reqwest::Client::new();
+    let request_url = &(String::from("http://") + &url + "/v2/login");
+    let response = client.post(request_url).json(msg).send().await?.bytes().await?;
+
+    let auth_response: AuthMessage = serde_json::from_slice(&response)?;
+
+    return Ok(auth_response.session_token)
+}
+
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error + Send + Sync>>{
     env_logger::init();
@@ -104,13 +100,22 @@ async fn main() -> Result<(), Box<dyn Error + Send + Sync>>{
 
     info!("Config functions: {}", config.functions.len());
     
+    let creds = &CredentialMessage { email: config.server.email.clone(), password: config.server.password.clone() };
+    
+    let session_token = login(config.server.url.clone(), creds).await?;
+    let query = "session_token=".to_owned() + &session_token;
+    let url_string = &(String::from("ws://") + &config.server.url + "/v2/receiver");
 
-    let (mut socket, _) = connect(Url::parse(&config.server.url)?)?;
+    let mut url = Url::parse(url_string).unwrap(); 
+
+    url.set_query(Some(query.as_str()));
+    let (mut socket, _) = connect(url)?;
 
     let auth_msg = OutboundMessage {
         message_type: "auth".to_string(),
-        password: Some(config.server.password.clone()),
-        //auth_key: config.server.auth_key.clone(),
+        client_id: None,
+        //password: Some(config.server.password.clone()),
+        password: None,
         receiver_name: "rust".to_string(),
         functions: None,
     };
@@ -141,6 +146,7 @@ async fn main() -> Result<(), Box<dyn Error + Send + Sync>>{
                 info!("Sending functions...");
                 let response = OutboundMessage {
                     message_type: "functions".to_string(),
+                    client_id: json.client_id,
                     password: Some(config.server.password.clone()),
                     //auth_key: config.server.auth_key.clone(),
                     receiver_name: "rust".to_string(),
