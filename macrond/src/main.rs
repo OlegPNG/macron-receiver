@@ -6,6 +6,7 @@ use std::{process::{self, Command}, error::Error};
 use config_file::FromConfigFile;
 use log::{info, error};
 use message::{AuthMessage, CredentialMessage};
+use reqwest::header::{CONTENT_TYPE, ACCEPT};
 use tokio_tungstenite::tungstenite::{Message, connect};
 use url::Url;
 use serde::{Serialize, Deserialize};
@@ -67,8 +68,17 @@ fn exec_function(id: usize, config: &MacronConfig) -> Result<(), Box<dyn Error +
 
 async fn login(url: String, msg: &CredentialMessage) -> Result<String, Box<dyn Error + Send + Sync>> {
     let client = reqwest::Client::new();
-    let request_url = &(String::from("http://") + &url + "/v2/login");
-    let response = client.post(request_url).json(msg).send().await?.bytes().await?;
+    let request_url = &(String::from("https://") + &url + "/v2/login");
+    //let request_url = &(String::from("http://") + &url + "/v2/login");
+    let response = client
+        .post(request_url)
+        .header(CONTENT_TYPE, "application/json")
+        .header(ACCEPT, "application/json")
+        .json(msg)
+        .send()
+        .await?
+        .bytes()
+    .await?;
 
     let auth_response: AuthMessage = serde_json::from_slice(&response)?;
 
@@ -104,11 +114,13 @@ async fn main() -> Result<(), Box<dyn Error + Send + Sync>>{
     
     let session_token = login(config.server.url.clone(), creds).await?;
     let query = "session_token=".to_owned() + &session_token;
-    let url_string = &(String::from("ws://") + &config.server.url + "/v2/receiver");
+    let url_string = &(String::from("wss://") + &config.server.url + "/v2/receiver");
+    //let url_string = &(String::from("ws://") + &config.server.url + "/v2/receiver");
 
     let mut url = Url::parse(url_string).unwrap(); 
 
     url.set_query(Some(query.as_str()));
+    info!("Connecting to websocket endpoint at url {}", url);
     let (mut socket, _) = connect(url)?;
 
     let auth_msg = OutboundMessage {
